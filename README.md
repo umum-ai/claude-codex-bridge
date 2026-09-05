@@ -209,6 +209,26 @@ claude plugin uninstall claude-codex-bridge@claude-codex-bridge --scope user
 claude plugin marketplace remove claude-codex-bridge
 ```
 
+## Why yet another connector?
+
+[codex-mcp](https://github.com/kvokka/codex-mcp)
+[explains](https://github.com/kvokka/codex-mcp/blob/master/docs/COMPARISON.md)
+why existing solutions on the market fall short, and why a straightforward
+approach was needed.
+
+I checked all the boxes, but the implementation ended up large and clumsy.
+
+This version is ~14× smaller (10 321 LOC in `codex-mcp` v3.1.0 vs 746 LOC in
+`claude-codex-bridge` v0.1.2), more stable, clearer, and cleaner. It builds on
+Claude Code Channels — still experimental, but solid enough in practice.
+
+It has the same limitations and the same feature set as `codex-mcp`.
+
+I only arrived at this design after shipping `codex-mcp`. The idea isn’t new: it
+was already implemented in
+[codex-claude-bridge](https://github.com/abhishekgahlot2/codex-claude-bridge).
+That project is unmaintained, and this architecture fixes several of its flaws.
+
 ## Releases
 
 A release is chosen manually with exactly one `release:patch`, `release:minor`,
