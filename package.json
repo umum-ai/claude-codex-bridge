@@ -12,7 +12,7 @@
     "esbuild": "0.28.2",
     "yaml": "2.9.0"
   },
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Run live Codex agents from Claude Code through MCP and Channels.",
   "bin": {
     "claude-codex-bridge": "dist/server.js"
