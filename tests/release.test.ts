@@ -1,4 +1,3 @@
-import { expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import {
   cpSync,
@@ -10,7 +9,8 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
-import { publish, runNpm } from "../scripts/publish";
+import { expect, test } from "vitest";
+import { publish, runNpm } from "../scripts/publish.ts";
 import {
   bumpVersion,
   nextVersion,
@@ -18,16 +18,17 @@ import {
   releaseLevel,
   run,
   versionPaths,
-} from "../scripts/release";
+} from "../scripts/release.ts";
 
 type FixtureDocument = {
   version: string;
+  packages: Record<string, { version: string }>;
   extra?: unknown;
   description: string;
   mcpServers: Record<string, { command: string; args: string[] }>;
   plugins: { version: string; name: string }[];
 };
-const project = resolve(import.meta.dir, "..");
+const project = resolve(import.meta.dirname, "..");
 function fixture(action: (root: string) => void) {
   const root = mkdtempSync(resolve(tmpdir(), "bridge-release-"));
   try {
@@ -100,13 +101,34 @@ test("a bump updates every real project version and the exact npm command pin", 
       contents.every((content) => content.includes(`"version": "${next}"`)),
     ).toBe(true);
     expect(contents[1]).toContain(`${before.packageName}@${next}`);
-    expect(contents.every((content) => !content.includes(before.version))).toBe(
-      true,
-    );
+    expect(
+      contents
+        .slice(0, 3)
+        .every((content) => !content.includes(before.version)),
+    ).toBe(true);
+    const oldLock = JSON.parse(before.contents[3]);
+    const newLock = JSON.parse(contents[3]);
+    expect(newLock.version).toBe(next);
+    expect(newLock.packages[""].version).toBe(next);
+    oldLock.version = next;
+    oldLock.packages[""].version = next;
+    expect(newLock).toEqual(oldLock);
   });
 });
 
 for (const mutation of [
+  [
+    3,
+    (doc: FixtureDocument) => {
+      doc.version = "999.0.0";
+    },
+  ],
+  [
+    3,
+    (doc: FixtureDocument) => {
+      doc.packages[""].version = "999.0.0";
+    },
+  ],
   [
     0,
     (doc: FixtureDocument) => {
@@ -286,4 +308,26 @@ test("npm sees the same package identity and files used for publication", () => 
   expect(
     record.files.map((file: { path: string }) => file.path).sort(),
   ).toEqual(["README.md", "dist/server.js", "package.json"]);
+});
+
+test("public npm metadata ignores a bootstrap token while publication receives it", () => {
+  const directory = mkdtempSync(resolve(tmpdir(), "bridge-npm-auth-"));
+  const previousPath = process.env.PATH;
+  const previousToken = process.env.NODE_AUTH_TOKEN;
+  try {
+    writeFileSync(
+      resolve(directory, "npm"),
+      '#!/usr/bin/env node\nprocess.stdout.write(process.env.NODE_AUTH_TOKEN ?? "");\n',
+      { mode: 0o755 },
+    );
+    process.env.PATH = `${directory}:${previousPath}`;
+    process.env.NODE_AUTH_TOKEN = "fixture-only";
+    expect(runNpm(["view"]).stdout).toBe("");
+    expect(runNpm(["publish"]).stdout).toBe("fixture-only");
+  } finally {
+    process.env.PATH = previousPath;
+    if (previousToken === undefined) delete process.env.NODE_AUTH_TOKEN;
+    else process.env.NODE_AUTH_TOKEN = previousToken;
+    rmSync(directory, { recursive: true, force: true });
+  }
 });

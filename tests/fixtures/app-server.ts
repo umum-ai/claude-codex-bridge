@@ -1,6 +1,7 @@
 import { createInterface } from "node:readline";
 
 const mode = process.argv[2];
+if (mode === "stubborn") process.on("SIGTERM", () => {});
 const threads = new Map<
   string,
   { model: string; cwd: string; turnId: string; prompt: string }

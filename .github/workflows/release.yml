@@ -3,9 +3,11 @@ name: release
 run-name: release ${{ inputs.ref || github.event.pull_request.title }}
 
 on:
-  pull_request:
-    # A label can be chosen before merging or added to an already merged PR.
-    types: [closed, labeled]
+  push:
+    branches: [main]
+  pull_request_target:
+    # For a label added after merge, execute only the workflow and code from main.
+    types: [labeled]
   workflow_dispatch:
     inputs:
       ref:
@@ -15,6 +17,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: read
   id-token: write
 
 concurrency:
@@ -25,7 +28,7 @@ jobs:
   release:
     if: >-
       github.repository == 'umum-ai/claude-codex-bridge' &&
-      (github.event_name == 'workflow_dispatch' ||
+      (github.event_name != 'pull_request_target' ||
        (github.event.pull_request.merged == true &&
         github.event.pull_request.base.ref == 'main'))
     runs-on: ubuntu-latest
@@ -37,21 +40,39 @@ jobs:
           ref: ${{ inputs.ref || 'main' }}
           fetch-depth: 0
       - uses: jdx/mise-action@v4.3.0
+      - name: Read the release decision from the merged PR
+        id: decision
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          EVENT_PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = push ]; then
+            gh api "repos/$GITHUB_REPOSITORY/commits/$SOURCE_SHA/pulls" --jq '
+              .[] | select(.merged_at != null and .merge_commit_sha == env.SOURCE_SHA) |
+              "labels=\([.labels[].name] | tojson)\nurl=\(.html_url)"
+            ' >> "$GITHUB_OUTPUT"
+          elif [ "$EVENT_NAME" = pull_request_target ]; then
+            printf 'labels=%s\nurl=%s\n' "$EVENT_LABELS" "$EVENT_PR_URL" >> "$GITHUB_OUTPUT"
+          fi
       - name: Prepare a release requested by its label
         id: candidate
         env:
-          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
+          LABELS: ${{ steps.decision.outputs.labels || '[]' }}
+          PR_URL: ${{ steps.decision.outputs.url }}
           RETRY_TAG: ${{ inputs.ref }}
         run: |
           set -euo pipefail
           base=$(git rev-parse HEAD)
           if [ -n "$RETRY_TAG" ]; then
-            version=$(bun scripts/release.ts verify "$RETRY_TAG")
+            version=$(node scripts/release.ts verify "$RETRY_TAG")
             test "$(git rev-parse "refs/tags/$RETRY_TAG^{commit}")" = "$base"
             git merge-base --is-ancestor HEAD origin/main
           else
-            level=$(bun scripts/release.ts level "$LABELS")
+            level=$(node scripts/release.ts level "$LABELS")
             if [ -z "$level" ]; then
               echo "No release label: nothing to publish."
               exit 0
@@ -60,10 +81,10 @@ jobs:
               echo "This PR already cut a release. Retry publishing with workflow_dispatch and its tag."
               exit 0
             fi
-            version=$(bun scripts/release.ts bump "$level")
+            version=$(node scripts/release.ts bump "$level")
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package.json .claude-plugin/marketplace.json plugins/claude-codex-bridge/.claude-plugin/plugin.json
+            git add package.json package-lock.json .claude-plugin/marketplace.json plugins/claude-codex-bridge/.claude-plugin/plugin.json
             git commit -m "Release $version" -m "Release-PR: $PR_URL"
           fi
           {
@@ -90,13 +111,20 @@ jobs:
           fi
           git tag -a "$RELEASE_VERSION" -m "Release $RELEASE_VERSION"
           git push --atomic origin HEAD:refs/heads/main "refs/tags/$RELEASE_VERSION"
+      - uses: actions/setup-node@v7
+        if: steps.candidate.outputs.version != ''
+        with:
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
       - name: Publish the verified npm archive with provenance
         if: steps.candidate.outputs.version != ''
         env:
           # Configure the npm trusted publisher for this repo, release.yml, environment npm.
           NPM_CONFIG_REGISTRY: https://registry.npmjs.org
           NPM_CONFIG_LOGLEVEL: verbose
-        run: bun scripts/publish.ts
+          # Bootstrap publication uses the short-lived token; npm can use OIDC once configured.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: node scripts/publish.ts
       - name: Publish GitHub release notes
         if: steps.candidate.outputs.version != ''
         env:

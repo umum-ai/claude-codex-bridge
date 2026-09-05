@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { spawnSync } from "node:child_process";
 import {
   cpSync,
   mkdirSync,
@@ -9,15 +9,25 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
-import { nextVersion, readVersions, versionPaths } from "../scripts/release";
+import { expect, test } from "vitest";
+import { parse } from "yaml";
+import { nextVersion, readVersions, versionPaths } from "../scripts/release.ts";
 
-type Step = { name?: string; uses?: string; run?: string; if?: string };
-const project = resolve(import.meta.dir, "..");
-const workflow = Bun.YAML.parse(
+type Step = {
+  name?: string;
+  uses?: string;
+  run?: string;
+  if?: string;
+  env?: Record<string, string>;
+  with?: Record<string, unknown>;
+};
+const project = resolve(import.meta.dirname, "..");
+const workflow = parse(
   readFileSync(resolve(project, ".github/workflows/release.yml"), "utf8"),
 ) as {
   on: {
-    pull_request: { types: string[] };
+    push: { branches: string[] };
+    pull_request_target: { types: string[] };
     workflow_dispatch: { inputs: { ref: object } };
   };
   permissions: Record<string, string>;
@@ -47,7 +57,16 @@ function command(
   args: string[],
   env: Record<string, string> = {},
 ) {
-  return Bun.spawnSync(args, { cwd, env: { ...environment, ...env } });
+  const result = spawnSync(args[0], args.slice(1), {
+    cwd,
+    env: { ...environment, ...env },
+    encoding: "utf8",
+  });
+  return {
+    exitCode: result.status ?? 1,
+    stdout: result.stdout ?? "",
+    stderr: result.error?.message ?? result.stderr ?? "",
+  };
 }
 function git(cwd: string, ...args: string[]) {
   const result = command(cwd, ["git", ...args]);
@@ -93,18 +112,28 @@ function prepare(root: string, labels = '["release:patch"]', retry = "") {
 }
 
 test("release triggers are manual labels or an existing tag, and verification precedes promotion and publishing", () => {
-  expect(workflow.on.pull_request.types).toEqual(["closed", "labeled"]);
+  expect(workflow.on.push.branches).toEqual(["main"]);
+  expect(workflow.on.pull_request_target.types).toEqual(["labeled"]);
   expect(workflow.on.workflow_dispatch.inputs.ref).toBeDefined();
   expect(workflow.permissions["id-token"]).toBe("write");
   expect(workflow.jobs.release.environment).toBe("npm");
   const check = steps.findIndex((step) => step.run === "mise run check");
   const promotion = steps.findIndex((step) => step.run === promote);
   const publication = steps.findIndex(
-    (step) => step.run === "bun scripts/publish.ts",
+    (step) => step.run === "node scripts/publish.ts",
   );
   expect(check).toBeGreaterThan(-1);
   expect(promotion).toBeGreaterThan(check);
   expect(publication).toBeGreaterThan(promotion);
+  expect(steps[publication].env?.NODE_AUTH_TOKEN).toBe(
+    `${"$"}{{ secrets.NPM_TOKEN }}`,
+  );
+  expect(steps.filter((step) => step.env?.NODE_AUTH_TOKEN).length).toBe(1);
+  expect(
+    steps.find((step) => step.uses === "actions/setup-node@v7")?.with?.[
+      "registry-url"
+    ],
+  ).toBe("https://registry.npmjs.org");
   expect(steps.some((step) => step.uses?.includes("siam-platform"))).toBe(
     false,
   );

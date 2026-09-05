@@ -1,15 +1,15 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import { createInterface } from "node:readline";
-import type { ClientRequest } from "../.generated/ClientRequest";
-import type { InitializeResponse } from "../.generated/InitializeResponse";
-import type { ServerNotification } from "../.generated/ServerNotification";
-import type { ServerRequest } from "../.generated/ServerRequest";
-import type { ModelListResponse } from "../.generated/v2/ModelListResponse";
-import type { ThreadResumeResponse } from "../.generated/v2/ThreadResumeResponse";
-import type { ThreadStartResponse } from "../.generated/v2/ThreadStartResponse";
-import type { TurnStartResponse } from "../.generated/v2/TurnStartResponse";
-import type { TurnSteerResponse } from "../.generated/v2/TurnSteerResponse";
-import manifest from "../package.json";
+import type { ClientRequest } from "../.generated/ClientRequest.ts";
+import type { InitializeResponse } from "../.generated/InitializeResponse.ts";
+import type { ServerNotification } from "../.generated/ServerNotification.ts";
+import type { ServerRequest } from "../.generated/ServerRequest.ts";
+import type { ModelListResponse } from "../.generated/v2/ModelListResponse.ts";
+import type { ThreadResumeResponse } from "../.generated/v2/ThreadResumeResponse.ts";
+import type { ThreadStartResponse } from "../.generated/v2/ThreadStartResponse.ts";
+import type { TurnStartResponse } from "../.generated/v2/TurnStartResponse.ts";
+import type { TurnSteerResponse } from "../.generated/v2/TurnSteerResponse.ts";
+import manifest from "../package.json" with { type: "json" };
 
 type Results = {
   initialize: InitializeResponse;

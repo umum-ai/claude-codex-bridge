@@ -3,10 +3,14 @@
   "type": "module",
   "devDependencies": {
     "@biomejs/biome": "2.5.12",
-    "@types/bun": "1.4.1",
     "typescript": "7.0.2",
     "@modelcontextprotocol/sdk": "1.30.0",
-    "zod": "4.5.4"
+    "zod": "4.5.4",
+    "@types/node": "24.13.3",
+    "vitest": "5.0.0",
+    "@vitest/coverage-v8": "5.0.0",
+    "esbuild": "0.28.2",
+    "yaml": "2.9.0"
   },
   "version": "0.1.1",
   "description": "Run live Codex agents from Claude Code through MCP and Channels.",
@@ -17,7 +21,7 @@
     "dist"
   ],
   "engines": {
-    "bun": ">=1.4.0"
+    "node": ">=24.20.0"
   },
   "repository": {
     "type": "git",
@@ -29,5 +33,12 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "scripts": {
+    "build": "node scripts/package-plugin.ts",
+    "test": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "start": "node dist/server.js"
   }
 }

@@ -1,17 +1,25 @@
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
-import { readVersions } from "./release";
+import { readVersions } from "./release.ts";
 
 type Result = { exitCode: number; stdout: string; stderr: string };
 type Npm = (args: string[]) => Result;
 
 export function runNpm(args: string[]): Result {
-  const result = Bun.spawnSync(["npm", ...args]);
+  const result = spawnSync("npm", args, {
+    encoding: "utf8",
+    // Public metadata reads must keep working after the bootstrap token expires.
+    env: {
+      ...process.env,
+      NODE_AUTH_TOKEN: args[0] === "view" ? "" : process.env.NODE_AUTH_TOKEN,
+    },
+  });
   return {
-    exitCode: result.exitCode,
-    stdout: result.stdout.toString(),
-    stderr: result.stderr.toString(),
+    exitCode: result.status ?? 1,
+    stdout: result.stdout ?? "",
+    stderr: result.error?.message ?? result.stderr ?? "",
   };
 }
 
@@ -64,4 +72,4 @@ export function publish(root: string, npm: Npm = runNpm): string {
   return `Published ${packageName}@${version}\n${result.stdout}`;
 }
 
-if (import.meta.main) console.log(publish(resolve(import.meta.dir, "..")));
+if (import.meta.main) console.log(publish(resolve(import.meta.dirname, "..")));

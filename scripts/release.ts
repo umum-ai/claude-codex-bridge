@@ -1,11 +1,11 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-// bun.lock records dependency versions, but no root package version.
 export const versionPaths = [
   "package.json",
   "plugins/claude-codex-bridge/.claude-plugin/plugin.json",
   ".claude-plugin/marketplace.json",
+  "package-lock.json",
 ];
 const semver = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const levels = ["patch", "minor", "major"];
@@ -42,7 +42,7 @@ export function readVersions(root: string) {
   const contents = versionPaths.map((path) =>
     readFileSync(resolve(root, path), "utf8"),
   );
-  const [pkg, plugin, marketplace] = contents.map((content) =>
+  const [pkg, plugin, marketplace, lock] = contents.map((content) =>
     JSON.parse(content),
   );
   if (typeof pkg.version !== "string" || !semver.test(pkg.version))
@@ -54,11 +54,15 @@ export function readVersions(root: string) {
     throw new Error("Expected exactly one marketplace entry for the plugin");
   const server = plugin.mcpServers["codex-bridge"];
   if (
+    lock.version !== pkg.version ||
+    lock.packages[""].version !== pkg.version ||
+    lock.name !== pkg.name ||
+    lock.packages[""].name !== pkg.name ||
     plugin.version !== pkg.version ||
     entries[0].version !== pkg.version ||
-    server.command !== "bunx" ||
+    server.command !== "npx" ||
     JSON.stringify(server.args) !==
-      JSON.stringify(["--bun", `${pkg.name}@${pkg.version}`])
+      JSON.stringify(["--yes", `${pkg.name}@${pkg.version}`])
   )
     throw new Error(
       "Project versions or the plugin's npm pin disagree; refusing a partial release",
@@ -71,6 +75,12 @@ export function bumpVersion(root: string, level: string): string {
   const next = nextVersion(version, level);
   // Validate every replacement before writing any file, and preserve formatting.
   const replacements = contents.map((content, index) => {
+    if (index === 3) {
+      const lock = JSON.parse(content);
+      lock.version = next;
+      lock.packages[""].version = next;
+      return `${JSON.stringify(lock, null, 2)}\n`;
+    }
     const pattern = /("version"\s*:\s*")([^"\n]+)(")/g;
     const matches = [...content.matchAll(pattern)];
     if (matches.length !== 1 || matches[0][2] !== version)
@@ -110,6 +120,6 @@ export function run(args: string[], root: string): string {
 }
 
 if (import.meta.main) {
-  const output = run(process.argv.slice(2), resolve(import.meta.dir, ".."));
+  const output = run(process.argv.slice(2), resolve(import.meta.dirname, ".."));
   if (output) console.log(output);
 }

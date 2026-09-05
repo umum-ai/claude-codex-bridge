@@ -18,8 +18,8 @@ jobs:
       - uses: jdx/mise-action@v4.3.0
         with:
           install: false
-      - run: mise install bun
+      - run: mise install node
       - name: Validate the optional manual release decision
         env:
           LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
-        run: mise exec -- bun scripts/release.ts level "$LABELS"
+        run: mise exec -- node scripts/release.ts level "$LABELS"

@@ -4,9 +4,9 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import manifest from "../package.json";
-import { AppServer } from "./app-server";
-import { Bridge } from "./bridge";
+import manifest from "../package.json" with { type: "json" };
+import { AppServer } from "./app-server.ts";
+import { Bridge } from "./bridge.ts";
 
 const id = z.string().min(1);
 const text = z.string().min(1).max(100_000);

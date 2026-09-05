@@ -1,19 +1,20 @@
-import { afterEach, expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { AppServer } from "../src/app-server";
-import { Bridge, type BridgeEvent } from "../src/bridge";
+import { setTimeout as sleep } from "node:timers/promises";
+import { afterEach, expect, test } from "vitest";
+import { AppServer } from "../src/app-server.ts";
+import { Bridge, type BridgeEvent } from "../src/bridge.ts";
 
 const cleanup: Bridge[] = [];
 const command = [
   process.execPath,
-  resolve(import.meta.dir, "fixtures/app-server.ts"),
+  resolve(import.meta.dirname, "fixtures/app-server.ts"),
 ];
 const cwd = process.cwd();
 async function until(condition: () => boolean) {
   const deadline = Date.now() + 2_000;
   while (!condition()) {
     if (Date.now() > deadline) throw new Error("Event did not arrive");
-    await Bun.sleep(5);
+    await sleep(5);
   }
 }
 function fixture(
@@ -77,7 +78,7 @@ test("start response establishes a running turn before the started notification 
   const { bridge, events } = fixture();
   const session = await bridge.start({ cwd, prompt: "late" });
   expect(session.status).toBe("running");
-  expect(session.turnId).toBeString();
+  expect(typeof session.turnId).toBe("string");
   expect(events).toEqual([]);
   await until(() => events.some((event) => event.kind === "started"));
   expect(bridge.status(session.threadId).sessions[0].turnId).toBe(
@@ -184,7 +185,7 @@ test("model errors, invalid directories, unknown threads, and rejected turns rem
     "absolute",
   );
   await expect(
-    bridge.start({ cwd: resolve(import.meta.path), prompt: "work" }),
+    bridge.start({ cwd: resolve(import.meta.filename), prompt: "work" }),
   ).rejects.toThrow("directory");
   await expect(
     bridge.start({ cwd, prompt: "work", model: "missing" }),
@@ -276,4 +277,11 @@ test("missing executable and unconnected requests fail without hanging", async (
     "not connected",
   );
   await unconnected.close();
+});
+
+test("shutdown kills a Codex process that ignores SIGTERM", async () => {
+  const { bridge, rpc } = fixture("stubborn");
+  await bridge.models();
+  await bridge.close();
+  await expect(rpc.call("model/list", {})).rejects.toThrow("closed");
 });

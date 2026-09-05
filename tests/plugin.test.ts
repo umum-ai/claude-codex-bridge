@@ -1,10 +1,13 @@
-import { expect, test } from "bun:test";
+import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { expect, test } from "vitest";
 import { z } from "zod";
 
 test("npm archive installs offline and its executable emits live events outside the source tree", async () => {
@@ -26,12 +29,14 @@ test("npm archive installs offline and its executable emits live events outside 
   );
   try {
     await mkdir(plugin);
-    await Bun.write(join(plugin, "package.json"), '{"private":true}');
-    const [packed] = await Bun.file(
-      resolve(import.meta.dir, "../.runtime/release/pack.json"),
-    ).json();
-    const install = Bun.spawnSync([
-      "npm",
+    await writeFile(join(plugin, "package.json"), '{"private":true}');
+    const [packed] = JSON.parse(
+      readFileSync(
+        resolve(import.meta.dirname, "../.runtime/release/pack.json"),
+        "utf8",
+      ),
+    );
+    const install = spawnSync("npm", [
       "install",
       "--prefix",
       plugin,
@@ -39,24 +44,24 @@ test("npm archive installs offline and its executable emits live events outside 
       "--offline",
       "--no-audit",
       "--no-fund",
-      resolve(import.meta.dir, "../.runtime/release", packed.filename),
+      resolve(import.meta.dirname, "../.runtime/release", packed.filename),
     ]);
-    expect(install.exitCode).toBe(0);
+    expect(install.status).toBe(0);
     const installed = join(plugin, "node_modules", packed.name);
-    expect(await Bun.file(join(installed, "src/index.ts")).exists()).toBe(
+    expect(existsSync(join(installed, "src/index.ts"))).toBe(false);
+    expect(existsSync(join(installed, "node_modules/package.json"))).toBe(
       false,
     );
-    expect(
-      await Bun.file(join(installed, "node_modules/package.json")).exists(),
-    ).toBe(false);
     const bin = join(directory, "bin");
     await mkdir(bin);
     await writeFile(
       join(bin, "codex"),
-      `#!/usr/bin/env bun\nimport ${JSON.stringify(pathToFileURL(resolve(import.meta.dir, "fixtures/app-server.ts")).href)};\n`,
+      `#!/usr/bin/env node\nimport ${JSON.stringify(pathToFileURL(resolve(import.meta.dirname, "fixtures/app-server.ts")).href)};\n`,
       { mode: 0o755 },
     );
-    const manifest = await Bun.file(join(installed, "package.json")).json();
+    const manifest = JSON.parse(
+      readFileSync(join(installed, "package.json"), "utf8"),
+    );
     await client.connect(
       new StdioClientTransport({
         command: join(plugin, "node_modules/.bin/claude-codex-bridge"),
@@ -88,7 +93,7 @@ test("npm archive installs offline and its executable emits live events outside 
     while (!events.some((event) => event.meta.kind === "completed")) {
       if (Date.now() > deadline)
         throw new Error("Bundled server did not push completion");
-      await Bun.sleep(10);
+      await sleep(10);
     }
     expect(
       events.some((event) => event.content === "steered: packaged steering"),
@@ -100,33 +105,36 @@ test("npm archive installs offline and its executable emits live events outside 
 }, 15_000);
 
 test("npm package contains only the bundled executable and user documentation", async () => {
-  const root = resolve(import.meta.dir, "..");
-  const [packed] = await Bun.file(
-    resolve(root, ".runtime/release/pack.json"),
-  ).json();
+  const root = resolve(import.meta.dirname, "..");
+  const [packed] = JSON.parse(
+    readFileSync(resolve(root, ".runtime/release/pack.json"), "utf8"),
+  );
   expect(
     packed.files.map((file: { path: string }) => file.path).sort(),
   ).toEqual(["README.md", "dist/server.js", "package.json"]);
-  const pkg = await Bun.file(resolve(root, "package.json")).json();
+  const pkg = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
   expect(packed.name).toBe(pkg.name);
   expect(packed.version).toBe(pkg.version);
   expect(pkg.dependencies).toBeUndefined();
   expect(
-    (await Bun.file(resolve(root, "dist/server.js")).text()).startsWith(
-      "#!/usr/bin/env bun\n",
+    readFileSync(resolve(root, "dist/server.js"), "utf8").startsWith(
+      "#!/usr/bin/env node\n",
     ),
   ).toBe(true);
-  const manifest = await Bun.file(
-    resolve(root, "plugins/claude-codex-bridge/.claude-plugin/plugin.json"),
-  ).json();
+  const manifest = JSON.parse(
+    readFileSync(
+      resolve(root, "plugins/claude-codex-bridge/.claude-plugin/plugin.json"),
+      "utf8",
+    ),
+  );
   expect(manifest.version).toBe(packed.version);
   expect(manifest.mcpServers["codex-bridge"]).toEqual({
-    command: "bunx",
-    args: ["--bun", `${packed.name}@${packed.version}`],
+    command: "npx",
+    args: ["--yes", `${packed.name}@${packed.version}`],
   });
-  const marketplace = await Bun.file(
-    resolve(root, ".claude-plugin/marketplace.json"),
-  ).json();
+  const marketplace = JSON.parse(
+    readFileSync(resolve(root, ".claude-plugin/marketplace.json"), "utf8"),
+  );
   expect(marketplace.plugins[0].source).toBe("./plugins/claude-codex-bridge");
   expect(marketplace.plugins[0].version).toBe(packed.version);
 });

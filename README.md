@@ -30,16 +30,16 @@ sequenceDiagram
 - **Claude Code 2.1.261**, installed and signed in.
 - **Codex CLI 0.153.4**, installed and signed in with access to the model you
   want to use.
-- **Bun 1.4.0**, available on the same machine.
+- **Node.js 24.20.0 or newer**, including npm and npx.
 
 These are the tested versions. Older versions are unsupported; compatibility
 with newer versions must be verified. The plugin uses the experimental Codex
 app-server protocol and Claude Code Channels research preview.
 
-Both `bun` and `codex` must be on the `PATH` inherited by Claude Code. The npm
+`node`, `npx`, and `codex` must be on the `PATH` inherited by Claude Code. The npm
 package includes the bridge's JavaScript dependencies. The plugin
-uses `bunx` to fetch its exact package version on first startup; subsequent
-starts use Bun's cache. No source build or protocol generation is required.
+uses `npx` to fetch its exact package version on first startup; subsequent
+starts use npm's cache. No source build or protocol generation is required.
 
 ## Install
 
@@ -47,12 +47,13 @@ starts use Bun's cache. No source build or protocol generation is required.
 
 Install [Claude Code](https://code.claude.com/docs/en/quickstart),
 [Codex CLI](https://developers.openai.com/codex/cli/), and
-[Bun](https://bun.sh/docs/installation), then check:
+[Node.js](https://nodejs.org/en/download), then check:
 
 ```sh
 claude --version
 codex --version
-bun --version
+node --version
+npm --version
 codex login status
 ```
 
@@ -70,7 +71,7 @@ claude plugin install claude-codex-bridge@claude-codex-bridge --scope user
 Claude installs the plugin from this repository's marketplace. The plugin
 starts the pinned version of
 [`@kvokka/claude-codex-bridge`](https://www.npmjs.com/package/@kvokka/claude-codex-bridge)
-with `bunx --bun`. The first startup needs access to the npm registry.
+with `npx --yes`. The first startup needs access to the npm registry.
 
 ### 3. Enable the plugin and Channels
 
@@ -215,8 +216,9 @@ or `release:major` label on a pull request. It runs when the PR merges into
 `main`, or when the label is added to an already merged PR. An unlabeled PR
 publishes nothing.
 
-The release updates the npm package version, plugin manifest, marketplace entry,
-and npm version in the plugin's launch command together. It checks the resulting
+The release updates the npm package version, both root versions in
+`package-lock.json`, the plugin manifest, the marketplace entry, and the npm
+version in the plugin's launch command together. It checks the resulting
 commit before pushing `main` and the `X.Y.Z` git tag atomically, then publishes
 the verified npm archive with provenance and creates the GitHub release. If `main`
 moves during the checks, the release stops before tagging.
@@ -229,9 +231,10 @@ rejected.
 The npm package owner must configure a
 [trusted publisher](https://docs.npmjs.com/trusted-publishers/) for GitHub owner
 `umum-ai`, repository `claude-codex-bridge`, workflow `release.yml`, and environment
-`npm`. The workflow uses GitHub OIDC and requires no npm token in this repository.
-The first npm publication and trusted-publisher setup require the package owner's
-npm access.
+`npm`. The first publication uses the repository's short-lived `NPM_TOKEN` secret.
+After the package exists and its trusted publisher is configured, npm uses
+GitHub OIDC; the token can expire or be removed. The token is passed only to the
+publication step.
 
 ## Troubleshooting
 
@@ -257,7 +260,8 @@ channels on the organization's allowlist.
 
 ### The MCP server fails to start
 
-Check that `bun --version` and `codex --version` work in the same terminal where
+Check that `node --version`, `npm --version`, and `codex --version` work in
+the same terminal where
 you launch Claude. Restart Claude after installing either tool or changing
 `PATH`. Use `/mcp` in Claude to inspect the server connection.
 
@@ -273,5 +277,5 @@ The event journal does not survive a restart; the saved Codex conversation does.
 
 Report reproducible problems at
 [GitHub Issues](https://github.com/umum-ai/claude-codex-bridge/issues), including
-the three tool versions, the failed operation, and relevant error messages.
+the tool versions, the failed operation, and relevant error messages.
 Remove credentials and private project content from reports.

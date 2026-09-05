@@ -3,7 +3,7 @@ repos:
     hooks:
       - id: biome
         name: biome
-        entry: mise exec -- bunx --no-install biome check --no-errors-on-unmatched
+        entry: mise exec -- npm exec --no -- biome check --no-errors-on-unmatched
         language: system
         types_or: [ts, json]
       - id: markdown
