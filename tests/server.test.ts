@@ -1,12 +1,13 @@
-import { afterEach, expect, test } from "bun:test";
 import { resolve } from "node:path";
 import { PassThrough } from "node:stream";
+import { setTimeout as sleep } from "node:timers/promises";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { afterEach, expect, test } from "vitest";
 import { z } from "zod";
-import { AppServer } from "../src/app-server";
-import { main } from "../src/index";
-import { createServer } from "../src/server";
+import { AppServer } from "../src/app-server.ts";
+import { main } from "../src/index.ts";
+import { createServer } from "../src/server.ts";
 
 const cleanups: (() => Promise<void>)[] = [];
 
@@ -15,12 +16,12 @@ test("stdio EOF closes the Codex child and shutdown is idempotent", async () => 
   const output = new PassThrough();
   const rpc = new AppServer([
     process.execPath,
-    resolve(import.meta.dir, "fixtures/app-server.ts"),
+    resolve(import.meta.dirname, "fixtures/app-server.ts"),
   ]);
   const { bridge, shutdown } = await main(input, output, rpc);
   await bridge.models();
   input.end();
-  await Bun.sleep(10);
+  await sleep(10);
   await shutdown();
   await shutdown();
   await expect(rpc.call("model/list", {})).rejects.toThrow("closed");
@@ -32,7 +33,7 @@ afterEach(async () => {
 async function connect() {
   const rpc = new AppServer([
     process.execPath,
-    resolve(import.meta.dir, "fixtures/app-server.ts"),
+    resolve(import.meta.dirname, "fixtures/app-server.ts"),
   ]);
   const { server, bridge } = createServer(rpc, 5);
   const client = new Client({ name: "test", version: "1" });
@@ -83,18 +84,20 @@ test("MCP advertises channel capability, typed tools, and nonblocking push event
   });
   expect(session.status).toBe("running");
   const threadId = session.threadId;
-  await Bun.sleep(30);
+  await sleep(30);
   expect(events.some((event) => event.meta.kind === "progress")).toBe(true);
   expect(
     (await call("codex_message", { threadId, message: "steer over MCP" })).mode,
   ).toBe("steered");
-  await Bun.sleep(10);
+  await sleep(10);
   expect(
     events.some((event) => event.content === "steered: steer over MCP"),
   ).toBe(true);
   expect((await call("codex_stop", { threadId })).requested).toBe(false);
-  expect((await call("codex_events")).events).toBeArray();
-  expect((await call("codex_status", { threadId })).sessions).toBeArray();
+  expect((await call("codex_events")).events).toBeInstanceOf(Array);
+  expect((await call("codex_status", { threadId })).sessions).toBeInstanceOf(
+    Array,
+  );
   await call("codex_resume", { threadId: "saved" });
 });
 
@@ -104,7 +107,7 @@ test("MCP question answer reaches Codex and tool errors use isError", async () =
     cwd: process.cwd(),
     prompt: "question",
   });
-  await Bun.sleep(15);
+  await sleep(15);
   const questionEvent = events.find((event) => event.meta.kind === "question");
   expect(questionEvent).toBeDefined();
   const question = JSON.parse(questionEvent?.content ?? "{}");
@@ -113,7 +116,7 @@ test("MCP question answer reaches Codex and tool errors use isError", async () =
     requestId: question.requestId,
     answers: { choice: ["A"] },
   });
-  await Bun.sleep(10);
+  await sleep(10);
   expect(events.some((event) => event.meta.kind === "completed")).toBe(true);
   expect((await client.callTool({ name: "unknown" })).isError).toBe(true);
   expect(

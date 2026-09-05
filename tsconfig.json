@@ -6,8 +6,8 @@
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "types": ["bun"],
+    "types": ["node"],
     "allowImportingTsExtensions": true
   },
-  "include": ["src", "tests", "scripts"]
+  "include": ["src", "tests", "scripts", "vitest.config.ts"]
 }

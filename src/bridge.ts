@@ -1,9 +1,9 @@
 import { stat } from "node:fs/promises";
 import { isAbsolute } from "node:path";
-import type { ServerNotification } from "../.generated/ServerNotification";
-import type { ServerRequest } from "../.generated/ServerRequest";
-import type { ToolRequestUserInputParams } from "../.generated/v2/ToolRequestUserInputParams";
-import type { AppServer } from "./app-server";
+import type { ServerNotification } from "../.generated/ServerNotification.ts";
+import type { ServerRequest } from "../.generated/ServerRequest.ts";
+import type { ToolRequestUserInputParams } from "../.generated/v2/ToolRequestUserInputParams.ts";
+import type { AppServer } from "./app-server.ts";
 
 export type BridgeEvent = {
   sequence: number;

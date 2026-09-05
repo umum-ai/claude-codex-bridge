@@ -1,8 +1,8 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 import type { Readable, Writable } from "node:stream";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { AppServer } from "./app-server";
-import { createServer } from "./server";
+import { AppServer } from "./app-server.ts";
+import { createServer } from "./server.ts";
 
 export async function main(
   input: Readable = process.stdin,

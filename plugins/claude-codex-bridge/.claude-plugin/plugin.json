@@ -7,8 +7,8 @@
   },
   "mcpServers": {
     "codex-bridge": {
-      "command": "bunx",
-      "args": ["--bun", "@kvokka/claude-codex-bridge@0.1.1"]
+      "command": "npx",
+      "args": ["--yes", "@kvokka/claude-codex-bridge@0.1.1"]
     }
   },
   "channels": [

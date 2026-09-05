@@ -1,5 +1,6 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 import { parseArgs } from "node:util";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
@@ -9,7 +10,7 @@ const { values } = parseArgs({
   args: process.argv.slice(2),
   options: { model: { type: "string" } },
 });
-const root = resolve(import.meta.dir, "..");
+const root = resolve(import.meta.dirname, "..");
 const cwd = resolve(root, ".runtime/smoke-work");
 await mkdir(cwd, { recursive: true });
 let client: Client;
@@ -40,7 +41,7 @@ function makeClient() {
 const transport = () =>
   new StdioClientTransport({
     command: process.execPath,
-    args: [resolve(root, "src/index.ts")],
+    args: [resolve(root, "dist/server.js")],
     env: Object.fromEntries(
       Object.entries(process.env).filter(
         (entry): entry is [string, string] => entry[1] !== undefined,
@@ -80,7 +81,7 @@ async function waitFor(
       throw new Error("Codex run failed");
     if (Date.now() > deadline)
       throw new Error(`No ${kind} event within ${timeout}ms`);
-    await Bun.sleep(100);
+    await sleep(100);
   }
 }
 client = makeClient();
@@ -144,7 +145,7 @@ try {
     recovered,
     events,
   };
-  await Bun.write(
+  await writeFile(
     resolve(root, ".runtime/smoke.json"),
     `${JSON.stringify(evidence, null, 2)}\n`,
   );
