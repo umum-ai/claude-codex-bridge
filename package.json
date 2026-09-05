@@ -40,5 +40,13 @@
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
     "start": "node dist/server.js"
-  }
+  },
+  "keywords": [
+    "claude-code",
+    "claude-plugin",
+    "codex",
+    "mcp",
+    "openai",
+    "nodejs"
+  ]
 }
