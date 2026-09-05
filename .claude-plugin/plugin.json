@@ -1,0 +1,21 @@
+{
+  "name": "claude-codex-bridge",
+  "version": "0.1.0",
+  "description": "Run live Codex agents from Claude with MCP controls and channel events.",
+  "author": {
+    "name": "umum-ai"
+  },
+  "mcpServers": {
+    "codex-bridge": {
+      "command": "bun",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/server.js"]
+    }
+  },
+  "channels": [
+    {
+      "server": "codex-bridge"
+    }
+  ],
+  "homepage": "https://github.com/umum-ai/claude-codex-bridge",
+  "repository": "https://github.com/umum-ai/claude-codex-bridge.git"
+}

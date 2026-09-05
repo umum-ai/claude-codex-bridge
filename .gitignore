@@ -1,0 +1,14 @@
+node_modules/
+.generated/
+coverage/
+.runtime/
+dist/
+.worktrees/
+.env
+.env.*
+!.env.example
+.claude/settings.local.json
+*.log
+.DS_Store
+gha-creds-*.json
+.rumdl_cache/

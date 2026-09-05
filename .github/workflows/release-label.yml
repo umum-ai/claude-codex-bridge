@@ -1,0 +1,25 @@
+name: release-label
+
+# This workflow reads PR metadata only; it never checks out or executes PR code.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  release-label:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: umum-ai/siam-platform/.github/actions/release-gate@2.1.0
+        with:
+          shipped: |
+            src/
+            .claude-plugin/
+            README.md
+            package.json
+            bun.lock
+            scripts/package-plugin.ts

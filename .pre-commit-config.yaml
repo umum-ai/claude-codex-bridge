@@ -1,0 +1,13 @@
+repos:
+  - repo: local
+    hooks:
+      - id: biome
+        name: biome
+        entry: mise exec -- bunx --no-install biome check --no-errors-on-unmatched
+        language: system
+        types_or: [ts, json]
+      - id: markdown
+        name: markdown
+        entry: mise exec -- rumdl check
+        language: system
+        types: [markdown]

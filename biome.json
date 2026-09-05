@@ -1,0 +1,14 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.12/schema.json",
+  "files": {
+    "includes": [
+      "**",
+      "!!.generated",
+      "!!.runtime",
+      "!!coverage",
+      "!!.rumdl_cache"
+    ]
+  },
+  "formatter": { "indentStyle": "space" },
+  "linter": { "enabled": true }
+}

@@ -1,0 +1,68 @@
+name: release
+
+run-name: release ${{ inputs.bump || github.event.pull_request.title }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Semver bump for the plugin release
+        required: true
+        type: choice
+        options: [patch, minor, major]
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+       github.event.pull_request.base.ref == 'main' &&
+       (contains(github.event.pull_request.labels.*.name, 'release:patch') ||
+        contains(github.event.pull_request.labels.*.name, 'release:minor') ||
+        contains(github.event.pull_request.labels.*.name, 'release:major')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: jdx/mise-action@v4.3.0
+      - run: mise run setup
+      - name: Decide the next version from the release label
+        id: version
+        uses: umum-ai/siam-platform/.github/actions/release-version@2.1.0
+        with:
+          bump: ${{ inputs.bump }}
+          labels-json: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+      - name: Prepare the plugin and marketplace
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: mise run release:prepare -- "$RELEASE_VERSION"
+      - run: mise run check
+      - name: Publish the version commit and tag
+        uses: umum-ai/siam-platform/.github/actions/release-tag@2.1.0
+        with:
+          version: ${{ steps.version.outputs.version }}
+          paths: |
+            .claude-plugin/plugin.json
+            .claude-plugin/marketplace.json
+      - name: Publish the installable ZIP
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: >-
+          gh release create "$RELEASE_TAG"
+          .runtime/release/claude-codex-bridge.zip
+          .runtime/release/SHA256SUMS
+          .runtime/release/marketplace.json
+          --verify-tag --generate-notes --title "$RELEASE_TAG"

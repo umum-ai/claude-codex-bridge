@@ -1,0 +1,14 @@
+{
+  "name": "claude-codex-bridge",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.12",
+    "@types/bun": "1.4.1",
+    "typescript": "7.0.2"
+  }
+}

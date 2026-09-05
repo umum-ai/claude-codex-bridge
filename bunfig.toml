@@ -1,0 +1,5 @@
+[test]
+coverageSkipTestFiles = true
+coveragePathIgnorePatterns = [".generated/**", "tests/fixtures/**", "scripts/**"]
+coverageThreshold = { line = 0.9, function = 0.9 }
+coverageReporter = ["text", "lcov"]
