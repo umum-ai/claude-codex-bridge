@@ -36,7 +36,8 @@ These are the tested versions. Older versions are unsupported; compatibility
 with newer versions must be verified. The plugin uses the experimental Codex
 app-server protocol and Claude Code Channels research preview.
 
-Both `bun` and `codex` must be on the `PATH` inherited by Claude Code. The npm package includes the bridge's JavaScript dependencies. The plugin
+Both `bun` and `codex` must be on the `PATH` inherited by Claude Code. The npm
+package includes the bridge's JavaScript dependencies. The plugin
 uses `bunx` to fetch its exact package version on first startup; subsequent
 starts use Bun's cache. No source build or protocol generation is required.
 
@@ -216,8 +217,8 @@ publishes nothing.
 
 The release updates the npm package version, plugin manifest, marketplace entry,
 and npm version in the plugin's launch command together. It checks the resulting
-commit before pushing `main` and the `X.Y.Z` git tag atomically, then publishes the
-verified npm archive with provenance and creates the GitHub release. If `main`
+commit before pushing `main` and the `X.Y.Z` git tag atomically, then publishes
+the verified npm archive with provenance and creates the GitHub release. If `main`
 moves during the checks, the release stops before tagging.
 
 For a failed publication, run the `release` workflow manually with its existing

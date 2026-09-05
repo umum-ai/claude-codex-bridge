@@ -11,7 +11,7 @@ run = ["bun install --frozen-lockfile", "codex app-server generate-ts --experime
 
 [tasks.check]
 depends = ["build"]
-run = ["bun scripts/release.ts verify", "rumdl check .", "bunx --no-install biome check .", "bunx --no-install tsc --noEmit", "bun test --randomize --coverage", "bun scripts/coverage.ts"]
+run = ["bun scripts/release.ts verify", "rumdl check --no-config .", "bunx --no-install biome check .", "bunx --no-install tsc --noEmit", "bun test --randomize --coverage", "bun scripts/coverage.ts"]
 
 [tasks.test]
 depends = ["build"]
