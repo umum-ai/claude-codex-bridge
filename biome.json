@@ -6,6 +6,7 @@
       "!!.generated",
       "!!.runtime",
       "!!coverage",
+      "!!dist",
       "!!.rumdl_cache"
     ]
   },

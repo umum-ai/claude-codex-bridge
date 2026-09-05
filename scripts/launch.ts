@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import marketplace from "../.claude-plugin/marketplace.json";
-import manifest from "../.claude-plugin/plugin.json";
+import manifest from "../plugins/claude-codex-bridge/.claude-plugin/plugin.json";
 
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),

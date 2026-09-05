@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -7,9 +7,9 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { z } from "zod";
 
-test("installed plugin bundle runs outside the source tree with no node_modules and emits live events", async () => {
+test("npm archive installs offline and its executable emits live events outside the source tree", async () => {
   const directory = await mkdtemp(join(tmpdir(), "claude-codex-plugin-"));
-  const plugin = join(directory, "plugin cache with spaces");
+  const plugin = join(directory, "npm install with spaces");
   const client = new Client({ name: "plugin-package-test", version: "1" });
   const events: { content: string; meta: Record<string, string> }[] = [];
   client.setNotificationHandler(
@@ -25,16 +25,29 @@ test("installed plugin bundle runs outside the source tree with no node_modules 
     },
   );
   try {
-    await cp(
-      resolve(
-        import.meta.dir,
-        "../.runtime/marketplace/plugins/claude-codex-bridge",
-      ),
+    await mkdir(plugin);
+    await Bun.write(join(plugin, "package.json"), '{"private":true}');
+    const [packed] = await Bun.file(
+      resolve(import.meta.dir, "../.runtime/release/pack.json"),
+    ).json();
+    const install = Bun.spawnSync([
+      "npm",
+      "install",
+      "--prefix",
       plugin,
-      { recursive: true },
+      "--ignore-scripts",
+      "--offline",
+      "--no-audit",
+      "--no-fund",
+      resolve(import.meta.dir, "../.runtime/release", packed.filename),
+    ]);
+    expect(install.exitCode).toBe(0);
+    const installed = join(plugin, "node_modules", packed.name);
+    expect(await Bun.file(join(installed, "src/index.ts")).exists()).toBe(
+      false,
     );
     expect(
-      await Bun.file(join(plugin, "node_modules/package.json")).exists(),
+      await Bun.file(join(installed, "node_modules/package.json")).exists(),
     ).toBe(false);
     const bin = join(directory, "bin");
     await mkdir(bin);
@@ -43,16 +56,11 @@ test("installed plugin bundle runs outside the source tree with no node_modules 
       `#!/usr/bin/env bun\nimport ${JSON.stringify(pathToFileURL(resolve(import.meta.dir, "fixtures/app-server.ts")).href)};\n`,
       { mode: 0o755 },
     );
-    const manifest = await Bun.file(
-      join(plugin, ".claude-plugin/plugin.json"),
-    ).json();
-    const entry = manifest.mcpServers[manifest.channels[0].server];
+    const manifest = await Bun.file(join(installed, "package.json")).json();
     await client.connect(
       new StdioClientTransport({
-        command: entry.command,
-        args: entry.args.map((arg: string) =>
-          arg.replaceAll(/\$\{CLAUDE_PLUGIN_ROOT\}/g, () => plugin),
-        ),
+        command: join(plugin, "node_modules/.bin/claude-codex-bridge"),
+        args: [],
         cwd: directory,
         env: { PATH: `${bin}:${process.env.PATH}` },
       }),
@@ -89,39 +97,36 @@ test("installed plugin bundle runs outside the source tree with no node_modules 
     await client.close();
     await rm(directory, { recursive: true, force: true });
   }
-});
+}, 15_000);
 
-test("release ZIP contains only the installable plugin and has a matching checksum", async () => {
+test("npm package contains only the bundled executable and user documentation", async () => {
   const root = resolve(import.meta.dir, "..");
-  const archive = resolve(root, ".runtime/release/claude-codex-bridge.zip");
-  const listing = Bun.spawnSync([
-    "python",
-    "-c",
-    "import json, sys, zipfile; z=zipfile.ZipFile(sys.argv[1]); print(json.dumps({'files': sorted(z.namelist()), 'manifest': json.loads(z.read('.claude-plugin/plugin.json'))}))",
-    archive,
-  ]);
-  expect(listing.exitCode).toBe(0);
-  const contents = JSON.parse(listing.stdout.toString());
-  expect(contents.files).toEqual([
-    ".claude-plugin/plugin.json",
-    "README.md",
-    "dist/server.js",
-  ]);
-  const manifest = await Bun.file(
-    resolve(root, ".claude-plugin/plugin.json"),
+  const [packed] = await Bun.file(
+    resolve(root, ".runtime/release/pack.json"),
   ).json();
-  expect(contents.manifest).toEqual(manifest);
-  const digest = new Bun.CryptoHasher("sha256")
-    .update(await Bun.file(archive).arrayBuffer())
-    .digest("hex");
   expect(
-    await Bun.file(resolve(root, ".runtime/release/SHA256SUMS")).text(),
-  ).toBe(`${digest}  claude-codex-bridge.zip\n`);
+    packed.files.map((file: { path: string }) => file.path).sort(),
+  ).toEqual(["README.md", "dist/server.js", "package.json"]);
+  const pkg = await Bun.file(resolve(root, "package.json")).json();
+  expect(packed.name).toBe(pkg.name);
+  expect(packed.version).toBe(pkg.version);
+  expect(pkg.dependencies).toBeUndefined();
+  expect(
+    (await Bun.file(resolve(root, "dist/server.js")).text()).startsWith(
+      "#!/usr/bin/env bun\n",
+    ),
+  ).toBe(true);
+  const manifest = await Bun.file(
+    resolve(root, "plugins/claude-codex-bridge/.claude-plugin/plugin.json"),
+  ).json();
+  expect(manifest.version).toBe(packed.version);
+  expect(manifest.mcpServers["codex-bridge"]).toEqual({
+    command: "bunx",
+    args: ["--bun", `${packed.name}@${packed.version}`],
+  });
   const marketplace = await Bun.file(
     resolve(root, ".claude-plugin/marketplace.json"),
   ).json();
-  expect(marketplace.plugins[0].version).toBe(manifest.version);
-  expect(marketplace.plugins[0].source.url).toBe(
-    `https://github.com/umum-ai/claude-codex-bridge/releases/download/${manifest.version}/claude-codex-bridge.zip`,
-  );
+  expect(marketplace.plugins[0].source).toBe("./plugins/claude-codex-bridge");
+  expect(marketplace.plugins[0].version).toBe(packed.version);
 });
