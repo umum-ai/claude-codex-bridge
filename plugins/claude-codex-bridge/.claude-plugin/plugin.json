@@ -7,8 +7,8 @@
   },
   "mcpServers": {
     "codex-bridge": {
-      "command": "bun",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/server.js"]
+      "command": "bunx",
+      "args": ["--bun", "@kvokka/claude-codex-bridge@0.1.0"]
     }
   },
   "channels": [

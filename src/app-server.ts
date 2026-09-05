@@ -1,6 +1,5 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import { createInterface } from "node:readline";
-import manifest from "../.claude-plugin/plugin.json";
 import type { ClientRequest } from "../.generated/ClientRequest";
 import type { InitializeResponse } from "../.generated/InitializeResponse";
 import type { ServerNotification } from "../.generated/ServerNotification";
@@ -10,6 +9,7 @@ import type { ThreadResumeResponse } from "../.generated/v2/ThreadResumeResponse
 import type { ThreadStartResponse } from "../.generated/v2/ThreadStartResponse";
 import type { TurnStartResponse } from "../.generated/v2/TurnStartResponse";
 import type { TurnSteerResponse } from "../.generated/v2/TurnSteerResponse";
+import manifest from "../package.json";
 
 type Results = {
   initialize: InitializeResponse;

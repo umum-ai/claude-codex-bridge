@@ -1,20 +1,21 @@
 name: release
 
-run-name: release ${{ inputs.bump || github.event.pull_request.title }}
+run-name: release ${{ inputs.ref || github.event.pull_request.title }}
 
 on:
+  pull_request:
+    # A label can be chosen before merging or added to an already merged PR.
+    types: [closed, labeled]
   workflow_dispatch:
     inputs:
-      bump:
-        description: Semver bump for the plugin release
+      ref:
+        description: Existing X.Y.Z tag to retry publishing; does not bump a version.
         required: true
-        type: choice
-        options: [patch, minor, major]
-  pull_request:
-    types: [closed]
+        type: string
 
 permissions:
   contents: write
+  id-token: write
 
 concurrency:
   group: release
@@ -23,46 +24,86 @@ concurrency:
 jobs:
   release:
     if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.pull_request.merged == true &&
-       github.event.pull_request.base.ref == 'main' &&
-       (contains(github.event.pull_request.labels.*.name, 'release:patch') ||
-        contains(github.event.pull_request.labels.*.name, 'release:minor') ||
-        contains(github.event.pull_request.labels.*.name, 'release:major')))
+      github.repository == 'umum-ai/claude-codex-bridge' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.pull_request.merged == true &&
+        github.event.pull_request.base.ref == 'main'))
     runs-on: ubuntu-latest
+    environment: npm
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7.0.1
         with:
-          ref: main
+          ref: ${{ inputs.ref || 'main' }}
           fetch-depth: 0
       - uses: jdx/mise-action@v4.3.0
-      - run: mise run setup
-      - name: Decide the next version from the release label
-        id: version
-        uses: umum-ai/siam-platform/.github/actions/release-version@2.1.0
-        with:
-          bump: ${{ inputs.bump }}
-          labels-json: ${{ toJSON(github.event.pull_request.labels.*.name) }}
-      - name: Prepare the plugin and marketplace
+      - name: Prepare a release requested by its label
+        id: candidate
         env:
-          RELEASE_VERSION: ${{ steps.version.outputs.version }}
-        run: mise run release:prepare -- "$RELEASE_VERSION"
-      - run: mise run check
-      - name: Publish the version commit and tag
-        uses: umum-ai/siam-platform/.github/actions/release-tag@2.1.0
-        with:
-          version: ${{ steps.version.outputs.version }}
-          paths: |
-            .claude-plugin/plugin.json
-            .claude-plugin/marketplace.json
-      - name: Publish the installable ZIP
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          RETRY_TAG: ${{ inputs.ref }}
+        run: |
+          set -euo pipefail
+          base=$(git rev-parse HEAD)
+          if [ -n "$RETRY_TAG" ]; then
+            version=$(bun scripts/release.ts verify "$RETRY_TAG")
+            test "$(git rev-parse "refs/tags/$RETRY_TAG^{commit}")" = "$base"
+            git merge-base --is-ancestor HEAD origin/main
+          else
+            level=$(bun scripts/release.ts level "$LABELS")
+            if [ -z "$level" ]; then
+              echo "No release label: nothing to publish."
+              exit 0
+            fi
+            if git log origin/main --format=%B | grep -Fx "Release-PR: $PR_URL" > /dev/null; then
+              echo "This PR already cut a release. Retry publishing with workflow_dispatch and its tag."
+              exit 0
+            fi
+            version=$(bun scripts/release.ts bump "$level")
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package.json .claude-plugin/marketplace.json plugins/claude-codex-bridge/.claude-plugin/plugin.json
+            git commit -m "Release $version" -m "Release-PR: $PR_URL"
+          fi
+          {
+            echo "version=$version"
+            echo "base=$base"
+          } >> "$GITHUB_OUTPUT"
+      - if: steps.candidate.outputs.version != ''
+        run: mise run setup
+      - name: Verify and pack the candidate commit
+        if: steps.candidate.outputs.version != ''
+        run: mise run check
+      - name: Promote exactly the commit that passed the checks
+        if: steps.candidate.outputs.version != '' && github.event_name != 'workflow_dispatch'
+        env:
+          RELEASE_VERSION: ${{ steps.candidate.outputs.version }}
+          RELEASE_BASE: ${{ steps.candidate.outputs.base }}
+        run: |
+          set -euo pipefail
+          git diff --exit-code
+          git fetch origin main
+          if [ "$(git rev-parse FETCH_HEAD)" != "$RELEASE_BASE" ]; then
+            echo "main moved during verification. Nothing is tagged; rerun to check the new tip."
+            exit 1
+          fi
+          git tag -a "$RELEASE_VERSION" -m "Release $RELEASE_VERSION"
+          git push --atomic origin HEAD:refs/heads/main "refs/tags/$RELEASE_VERSION"
+      - name: Publish the verified npm archive with provenance
+        if: steps.candidate.outputs.version != ''
+        env:
+          # Configure the npm trusted publisher for this repo, release.yml, environment npm.
+          NPM_CONFIG_REGISTRY: https://registry.npmjs.org
+          NPM_CONFIG_LOGLEVEL: verbose
+        run: bun scripts/publish.ts
+      - name: Publish GitHub release notes
+        if: steps.candidate.outputs.version != ''
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ steps.version.outputs.tag }}
-        run: >-
-          gh release create "$RELEASE_TAG"
-          .runtime/release/claude-codex-bridge.zip
-          .runtime/release/SHA256SUMS
-          .runtime/release/marketplace.json
-          --verify-tag --generate-notes --title "$RELEASE_TAG"
+          RELEASE_VERSION: ${{ steps.candidate.outputs.version }}
+        run: |
+          set -euo pipefail
+          if ! gh release view "$RELEASE_VERSION" > /dev/null 2>&1; then
+            gh release create "$RELEASE_VERSION" --verify-tag --generate-notes --title "$RELEASE_VERSION"
+          fi

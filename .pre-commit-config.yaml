@@ -8,6 +8,6 @@ repos:
         types_or: [ts, json]
       - id: markdown
         name: markdown
-        entry: mise exec -- rumdl check
+        entry: mise exec -- rumdl check --no-config
         language: system
         types: [markdown]

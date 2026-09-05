@@ -1,14 +1,33 @@
 {
-  "name": "claude-codex-bridge",
-  "private": true,
+  "name": "@kvokka/claude-codex-bridge",
   "type": "module",
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "1.30.0",
-    "zod": "4.5.4"
-  },
   "devDependencies": {
     "@biomejs/biome": "2.5.12",
     "@types/bun": "1.4.1",
-    "typescript": "7.0.2"
+    "typescript": "7.0.2",
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "zod": "4.5.4"
+  },
+  "version": "0.1.0",
+  "description": "Run live Codex agents from Claude Code through MCP and Channels.",
+  "bin": {
+    "claude-codex-bridge": "dist/server.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/umum-ai/claude-codex-bridge.git"
+  },
+  "homepage": "https://github.com/umum-ai/claude-codex-bridge#readme",
+  "bugs": {
+    "url": "https://github.com/umum-ai/claude-codex-bridge/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

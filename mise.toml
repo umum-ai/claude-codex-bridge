@@ -2,7 +2,7 @@
 bun = "1.4.0"
 codex = "0.153.4"
 claude = "2.1.261"
-python = "3.14.3"
+node = "26.8.1"
 prek = "0.4.14"
 rumdl = "0.2.61"
 
@@ -11,7 +11,7 @@ run = ["bun install --frozen-lockfile", "codex app-server generate-ts --experime
 
 [tasks.check]
 depends = ["build"]
-run = ["rumdl check .", "bunx --no-install biome check .", "bunx --no-install tsc --noEmit", "bun test --randomize --coverage", "bun scripts/coverage.ts"]
+run = ["bun scripts/release.ts verify", "rumdl check --no-config .", "bunx --no-install biome check .", "bunx --no-install tsc --noEmit", "bun test --randomize --coverage", "bun scripts/coverage.ts"]
 
 [tasks.test]
 depends = ["build"]
@@ -29,8 +29,8 @@ description = "Launch the installed plugin with its development channel enabled"
 run = "bun scripts/launch.ts --plugin"
 
 [tasks.build]
-description = "Bundle the plugin ZIP and a local marketplace"
-run = ["bun scripts/package-plugin.ts", "claude plugin validate --strict .claude-plugin/marketplace.json", "claude plugin validate --strict .runtime/marketplace/.claude-plugin/marketplace.json", "claude plugin validate --strict .runtime/marketplace/plugins/claude-codex-bridge"]
+description = "Build the npm package and validate the Claude plugin"
+run = ["bun scripts/package-plugin.ts", "claude plugin validate --strict .claude-plugin/marketplace.json", "claude plugin validate --strict plugins/claude-codex-bridge"]
 
 [tasks.smoke]
 description = "Exercise real Codex start, live steering, interruption and recovery through MCP"
@@ -41,5 +41,5 @@ description = "Run commit hooks over all tracked files"
 run = "prek run --all-files"
 
 [tasks."release:prepare"]
-description = "Prepare a versioned release ZIP and update marketplace metadata: X.Y.Z"
-run = "bun scripts/version.ts"
+description = "Bump all project version references: patch, minor, or major"
+run = "bun scripts/release.ts bump"

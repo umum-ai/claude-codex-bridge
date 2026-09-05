@@ -10,11 +10,7 @@
     {
       "name": "claude-codex-bridge",
       "version": "0.1.0",
-      "source": {
-        "source": "archive",
-        "url": "https://github.com/umum-ai/claude-codex-bridge/releases/download/0.1.0/claude-codex-bridge.zip",
-        "sha256": "c9502f156e8ada22c526573d2e3eac0b7fb72b81339ab0da1f24123f55b76906"
-      },
+      "source": "./plugins/claude-codex-bridge",
       "description": "Live Codex agents through MCP and Claude Code Channels."
     }
   ]

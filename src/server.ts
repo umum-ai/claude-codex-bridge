@@ -4,7 +4,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import manifest from "../.claude-plugin/plugin.json";
+import manifest from "../package.json";
 import { AppServer } from "./app-server";
 import { Bridge } from "./bridge";
 

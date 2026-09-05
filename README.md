@@ -36,9 +36,10 @@ These are the tested versions. Older versions are unsupported; compatibility
 with newer versions must be verified. The plugin uses the experimental Codex
 app-server protocol and Claude Code Channels research preview.
 
-Both `bun` and `codex` must be on the `PATH` inherited by Claude Code. The ZIP
-release includes the bridge's JavaScript dependencies, so installing the plugin
-requires no source build, package installation, or protocol generation.
+Both `bun` and `codex` must be on the `PATH` inherited by Claude Code. The npm
+package includes the bridge's JavaScript dependencies. The plugin
+uses `bunx` to fetch its exact package version on first startup; subsequent
+starts use Bun's cache. No source build or protocol generation is required.
 
 ## Install
 
@@ -66,9 +67,10 @@ claude plugin marketplace add umum-ai/claude-codex-bridge
 claude plugin install claude-codex-bridge@claude-codex-bridge --scope user
 ```
 
-Claude downloads the versioned ZIP from this repository's
-[Releases](https://github.com/umum-ai/claude-codex-bridge/releases) and checks
-its SHA-256 against the marketplace entry.
+Claude installs the plugin from this repository's marketplace. The plugin
+starts the pinned version of
+[`@kvokka/claude-codex-bridge`](https://www.npmjs.com/package/@kvokka/claude-codex-bridge)
+with `bunx --bun`. The first startup needs access to the npm registry.
 
 ### 3. Enable the plugin and Channels
 
@@ -205,6 +207,31 @@ Restart Claude after updating. To remove the plugin:
 claude plugin uninstall claude-codex-bridge@claude-codex-bridge --scope user
 claude plugin marketplace remove claude-codex-bridge
 ```
+
+## Releases
+
+A release is chosen manually with exactly one `release:patch`, `release:minor`,
+or `release:major` label on a pull request. It runs when the PR merges into
+`main`, or when the label is added to an already merged PR. An unlabeled PR
+publishes nothing.
+
+The release updates the npm package version, plugin manifest, marketplace entry,
+and npm version in the plugin's launch command together. It checks the resulting
+commit before pushing `main` and the `X.Y.Z` git tag atomically, then publishes
+the verified npm archive with provenance and creates the GitHub release. If `main`
+moves during the checks, the release stops before tagging.
+
+For a failed publication, run the `release` workflow manually with its existing
+`X.Y.Z` tag as `ref`. This retries that version without another bump. An npm
+version already carrying the same archive is left in place; different bytes are
+rejected.
+
+The npm package owner must configure a
+[trusted publisher](https://docs.npmjs.com/trusted-publishers/) for GitHub owner
+`umum-ai`, repository `claude-codex-bridge`, workflow `release.yml`, and environment
+`npm`. The workflow uses GitHub OIDC and requires no npm token in this repository.
+The first npm publication and trusted-publisher setup require the package owner's
+npm access.
 
 ## Troubleshooting
 

@@ -1,3 +1,4 @@
+#!/usr/bin/env bun
 import type { Readable, Writable } from "node:stream";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { AppServer } from "./app-server";

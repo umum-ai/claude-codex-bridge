@@ -1,5 +1,5 @@
 [test]
 coverageSkipTestFiles = true
-coveragePathIgnorePatterns = [".generated/**", "tests/fixtures/**", "scripts/**"]
+coveragePathIgnorePatterns = [".generated/**", "tests/fixtures/**", "scripts/coverage.ts", "scripts/launch.ts", "scripts/smoke.ts", "scripts/package-plugin.ts"]
 coverageThreshold = { line = 0.9, function = 0.9 }
 coverageReporter = ["text", "lcov"]
