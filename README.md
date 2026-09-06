@@ -1,3 +1,5 @@
+[![umum-ai/claude-codex-bridge](https://glama.ai/mcp/servers/umum-ai/claude-codex-bridge/badges/score.svg)](https://glama.ai/mcp/servers/umum-ai/claude-codex-bridge)
+
 # Claude Codex Bridge
 
 Run OpenAI Codex agents from Claude Code. Ask Claude to delegate a task to
