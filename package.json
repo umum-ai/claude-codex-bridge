@@ -36,7 +36,7 @@
   },
   "scripts": {
     "build": "node scripts/package-plugin.ts",
-    "test": "vitest run --coverage",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
     "start": "node dist/server.js"
@@ -48,5 +48,6 @@
     "mcp",
     "openai",
     "nodejs"
-  ]
+  ],
+  "license": "MIT"
 }
