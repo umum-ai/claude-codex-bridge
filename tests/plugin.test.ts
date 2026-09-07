@@ -109,9 +109,11 @@ test("npm package contains only the bundled executable and user documentation", 
   const [packed] = JSON.parse(
     readFileSync(resolve(root, ".runtime/release/pack.json"), "utf8"),
   );
+
   expect(
     packed.files.map((file: { path: string }) => file.path).sort(),
-  ).toEqual(["README.md", "dist/server.js", "package.json"]);
+  ).toEqual(["LICENSE", "README.md", "dist/server.js", "package.json"]);
+
   const pkg = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
   expect(packed.name).toBe(pkg.name);
   expect(packed.version).toBe(pkg.version);

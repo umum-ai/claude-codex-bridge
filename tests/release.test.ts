@@ -305,9 +305,10 @@ test("npm sees the same package identity and files used for publication", () => 
   const [record] = JSON.parse(result.stdout);
   expect(record.name).toBe(readVersions(project).packageName);
   expect(record.version).toBe(readVersions(project).version);
+
   expect(
     record.files.map((file: { path: string }) => file.path).sort(),
-  ).toEqual(["README.md", "dist/server.js", "package.json"]);
+  ).toEqual(["LICENSE", "README.md", "dist/server.js", "package.json"]);
 });
 
 test("public npm metadata ignores a bootstrap token while publication receives it", () => {

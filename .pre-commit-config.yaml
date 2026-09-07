@@ -35,3 +35,8 @@ repos:
         entry: biome check --no-errors-on-unmatched
         language: system
         types_or: [ts, json]
+      - id: tests
+        name: vitest
+        entry: mise run test
+        language: system
+        pass_filenames: false
