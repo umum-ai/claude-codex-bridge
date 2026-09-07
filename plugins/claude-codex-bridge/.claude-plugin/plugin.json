@@ -1,6 +1,6 @@
 {
   "name": "claude-codex-bridge",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Run live Codex agents from Claude with MCP controls and channel events.",
   "author": {
     "name": "umum-ai"
@@ -8,7 +8,7 @@
   "mcpServers": {
     "codex-bridge": {
       "command": "npx",
-      "args": ["--yes", "@kvokka/claude-codex-bridge@0.1.2"]
+      "args": ["--yes", "@kvokka/claude-codex-bridge@0.1.3"]
     }
   },
   "channels": [
