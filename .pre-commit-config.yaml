@@ -1,13 +1,37 @@
 repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: mixed-line-ending
+      - id: end-of-file-fixer
+        exclude: ^mise.toml$
+      - id: trailing-whitespace
+      - id: check-symlinks
+      - id: detect-private-key
+      - id: fix-byte-order-marker
+      - id: check-merge-conflict
+      - id: check-executables-have-shebangs
+  - repo: https://github.com/rvben/rumdl-pre-commit
+    rev: v0.2.64
+    hooks:
+      - id: rumdl-fmt
+  # The git hook runs with the PATH of whatever invoked git, which carries the
+  # global mise tool set's install directories and not this repository's shims,
+  # so every entry below reaches its pin through `mise exec --`.
   - repo: local
     hooks:
+      - id: gitleaks
+        name: Detect hardcoded secrets
+        description: Detect hardcoded secrets using Gitleaks
+        entry: mise exec -- gitleaks git --pre-commit --redact --staged --verbose
+        language: system
+        pass_filenames: false
       - id: biome
         name: biome
-        entry: mise exec -- npm exec --no -- biome check --no-errors-on-unmatched
+        entry: biome check --no-errors-on-unmatched
         language: system
         types_or: [ts, json]
-      - id: markdown
-        name: markdown
-        entry: mise exec -- rumdl check --no-config
-        language: system
-        types: [markdown]
